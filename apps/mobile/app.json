@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Klear",
+    "slug": "klear",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "scheme": "klear",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3b82f6"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.klear.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Klear needs camera access to take photos of your space",
+        "NSPhotoLibraryUsageDescription": "Klear needs photo library access to select photos of your space"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3b82f6"
+      },
+      "package": "com.klear.app",
+      "usesCleartextTraffic": true,
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-image-picker"
+    ]
+  }
+}
