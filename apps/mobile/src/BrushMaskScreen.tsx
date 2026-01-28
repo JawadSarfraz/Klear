@@ -78,6 +78,7 @@ export function BrushMaskScreen({ imageUri, onComplete, onBack }: BrushMaskScree
       }
       setCursorPosition(null);
     })
+    .runOnJS(true)
     .minDistance(0);
 
   const handleClear = useCallback(() => {
