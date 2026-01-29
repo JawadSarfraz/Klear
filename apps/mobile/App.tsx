@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { StatusBar } from 'expo-status-bar';
+import Slider from '@react-native-community/slider';
 import { startInpainting, pollForCompletion } from './src/api';
 import { saveSession, loadSession, saveTasks, clearSession } from './src/storage';
 import { BrushMaskScreen } from './src/BrushMaskScreen';
@@ -73,6 +74,9 @@ function AppContent() {
   const [sliderPosition, setSliderPosition] = useState(50);
   const [error, setError] = useState<string | null>(null);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [strength, setStrength] = useState(0.85);
+  const [guidanceScale, setGuidanceScale] = useState(7.5);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Load saved session on mount
   useEffect(() => {
@@ -192,7 +196,10 @@ function AppContent() {
     setError(null);
 
     try {
-      const { predictionId } = await startInpainting(selectedImageBase64, maskData);
+      const { predictionId } = await startInpainting(selectedImageBase64, maskData, {
+        strength,
+        guidance_scale: guidanceScale,
+      });
       
       setProcessingStatus('Generating clean space...');
       
@@ -378,7 +385,7 @@ function AppContent() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.timeBudgetContent}>
+        <ScrollView style={styles.timeBudgetContainer} contentContainerStyle={styles.timeBudgetContent}>
           <Text style={styles.timeBudgetTitle}>How much time do you have?</Text>
           <Text style={styles.timeBudgetSubtitle}>We'll create a plan that fits your schedule</Text>
 
@@ -410,7 +417,56 @@ function AppContent() {
           <TouchableOpacity style={styles.primaryButton} onPress={handleStartProcessing}>
             <Text style={styles.primaryButtonText}>Generate Clean View ✨</Text>
           </TouchableOpacity>
-        </View>
+
+          <TouchableOpacity 
+            style={styles.advancedToggle} 
+            onPress={() => { triggerHaptic('light'); setShowAdvanced(!showAdvanced); }}
+          >
+            <Text style={styles.advancedToggleText}>
+              {showAdvanced ? '🔼 Hide Advanced Options' : '🔽 Show Advanced Options'}
+            </Text>
+          </TouchableOpacity>
+
+          {showAdvanced && (
+            <View style={styles.advancedContainer}>
+              <View style={styles.sliderGroup}>
+                <View style={styles.sliderHeader}>
+                  <Text style={styles.sliderLabel}>Strength (Creativity)</Text>
+                  <Text style={styles.sliderValue}>{strength.toFixed(2)}</Text>
+                </View>
+                <Text style={styles.sliderDesc}>Higher = more creative, Lower = closer to original</Text>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={0}
+                  maximumValue={1}
+                  value={strength}
+                  onValueChange={setStrength}
+                  minimumTrackTintColor="#3b82f6"
+                  maximumTrackTintColor="#d1d5db"
+                  thumbTintColor="#3b82f6"
+                />
+              </View>
+
+              <View style={styles.sliderGroup}>
+                <View style={styles.sliderHeader}>
+                  <Text style={styles.sliderLabel}>Guidance (Precision)</Text>
+                  <Text style={styles.sliderValue}>{guidanceScale.toFixed(1)}</Text>
+                </View>
+                <Text style={styles.sliderDesc}>Higher = follows prompt strictly</Text>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={1}
+                  maximumValue={20}
+                  value={guidanceScale}
+                  onValueChange={setGuidanceScale}
+                  minimumTrackTintColor="#3b82f6"
+                  maximumTrackTintColor="#d1d5db"
+                  thumbTintColor="#3b82f6"
+                />
+              </View>
+            </View>
+          )}
+        </ScrollView>
       </SafeAreaView>
     );
   }
@@ -713,10 +769,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
   },
-  // Time Budget styles
-  timeBudgetContent: {
+  // Time budget styles
+  timeBudgetContainer: {
     flex: 1,
+  },
+  timeBudgetContent: {
     paddingHorizontal: 24,
+    paddingBottom: 40,
   },
   timeBudgetTitle: {
     fontSize: 22,
@@ -1061,5 +1120,51 @@ const styles = StyleSheet.create({
   completionText: {
     fontSize: 14,
     color: '#15803d',
+  },
+  advancedToggle: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  advancedToggleText: {
+    color: '#6b7280',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  advancedContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  sliderGroup: {
+    marginBottom: 20,
+  },
+  sliderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  sliderLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  sliderValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3b82f6',
+  },
+  sliderDesc: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
   },
 });

@@ -12,6 +12,7 @@
   "dependencies": {
     "@klear/shared": "*",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/slider": "5.0.1",
     "@shopify/react-native-skia": "2.2.12",
     "expo": "~54.0.32",
     "expo-dev-client": "~6.0.20",
