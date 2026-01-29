@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { INPAINTING_PROMPT } from '@/lib/constants';
+import sharp from 'sharp';
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
@@ -7,7 +8,7 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { image, mask } = body;
+    const { image, mask, strength = 0.85, guidance_scale = 7.5 } = body;
 
     console.log(`[InpaintRequest] ID: ${requestId} | ImageSize: ${image?.length || 0} bytes | MaskSize: ${mask?.length || 0} bytes`);
 
@@ -28,6 +29,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // --- Mask Preprocessing: Dilation ---
+    // This grows the mask by a few pixels to ensure edges are fully covered
+    const maskBuffer = Buffer.from(mask.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    const dilatedMaskBuffer = await sharp(maskBuffer)
+      .grayscale()
+      .convolve({
+        width: 3,
+        height: 3,
+        kernel: [1, 1, 1, 1, 1, 1, 1, 1, 1] // Simple dilation kernel
+      })
+      .toBuffer();
+    
+    const processedMask = `data:image/png;base64,${dilatedMaskBuffer.toString('base64')}`;
+
     // Call Replicate API for SDXL inpainting
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
@@ -40,12 +55,12 @@ export async function POST(request: NextRequest) {
         version: 'c11bac58203367db93a3c552bd49a25a5418458ddffb7e90dae55780765e26d6',
         input: {
           image: image,
-          mask: mask,
+          mask: processedMask,
           prompt: INPAINTING_PROMPT,
           negative_prompt: 'cluttered, messy, dirty, disorganized, blurry, distorted',
           num_inference_steps: 30,
-          guidance_scale: 7.5,
-          strength: 0.85,
+          guidance_scale: guidance_scale,
+          strength: strength,
         },
       }),
     });
