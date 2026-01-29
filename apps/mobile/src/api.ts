@@ -15,13 +15,19 @@ export interface PredictionStatus {
   error?: string;
 }
 
-export async function startInpainting(imageBase64: string, maskBase64: string): Promise<InpaintResponse> {
+export async function startInpainting(
+  imageBase64: string, 
+  maskBase64: string,
+  options?: { strength?: number; guidance_scale?: number }
+): Promise<InpaintResponse> {
   const response = await fetch(`${API_BASE_URL}/api/inpaint`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       image: imageBase64,
       mask: maskBase64,
+      strength: options?.strength,
+      guidance_scale: options?.guidance_scale,
     }),
   });
 
