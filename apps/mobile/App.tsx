@@ -14,6 +14,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView, PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { StatusBar } from 'expo-status-bar';
 import { startInpainting, pollForCompletion } from './src/api';
 import { saveSession, loadSession, saveTasks, clearSession } from './src/storage';
@@ -111,6 +112,26 @@ function AppContent() {
     }
   }, []);
 
+  const processAndSetImage = async (uri: string) => {
+    try {
+      // Resize to max 1024px on the longest side for better AI performance and stability
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1024 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      
+      setSelectedImage(result.uri);
+      setSelectedImageBase64(`data:image/jpeg;base64,${result.base64}`);
+      setStep('preview');
+      triggerHaptic('success');
+    } catch (err) {
+      console.error('Error processing image:', err);
+      Alert.alert('Error', 'Failed to process image. Please try again.');
+      triggerHaptic('error');
+    }
+  };
+
   const pickImage = async () => {
     triggerHaptic('light');
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -122,15 +143,11 @@ function AppContent() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
-      quality: 0.8,
-      base64: true,
+      quality: 1, // High quality before manual resize
     });
 
     if (!result.canceled && result.assets[0]) {
-      setSelectedImage(result.assets[0].uri);
-      setSelectedImageBase64(result.assets[0].base64 ? `data:image/jpeg;base64,${result.assets[0].base64}` : null);
-      setStep('preview');
-      triggerHaptic('success');
+      await processAndSetImage(result.assets[0].uri);
     }
   };
 
@@ -144,15 +161,11 @@ function AppContent() {
 
     const result = await ImagePicker.launchCameraAsync({
       allowsEditing: true,
-      quality: 0.8,
-      base64: true,
+      quality: 1, // High quality before manual resize
     });
 
     if (!result.canceled && result.assets[0]) {
-      setSelectedImage(result.assets[0].uri);
-      setSelectedImageBase64(result.assets[0].base64 ? `data:image/jpeg;base64,${result.assets[0].base64}` : null);
-      setStep('preview');
-      triggerHaptic('success');
+      await processAndSetImage(result.assets[0].uri);
     }
   };
 

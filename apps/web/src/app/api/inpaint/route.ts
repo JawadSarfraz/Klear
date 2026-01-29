@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { INPAINTING_PROMPT } from '@/lib/constants';
 
 export async function POST(request: NextRequest) {
+  const requestId = Math.random().toString(36).substring(7);
+  const startTime = Date.now();
+  
   try {
-    const { image, mask } = await request.json();
+    const body = await request.json();
+    const { image, mask } = body;
+
+    console.log(`[InpaintRequest] ID: ${requestId} | ImageSize: ${image?.length || 0} bytes | MaskSize: ${mask?.length || 0} bytes`);
 
     if (!image || !mask) {
+      console.error(`[InpaintError] ID: ${requestId} | Missing image or mask`);
       return NextResponse.json(
         { error: 'Image and mask are required' },
         { status: 400 }
@@ -14,6 +21,7 @@ export async function POST(request: NextRequest) {
 
     const apiKey = process.env.REPLICATE_API_TOKEN;
     if (!apiKey) {
+      console.error(`[InpaintError] ID: ${requestId} | Replicate API key not configured`);
       return NextResponse.json(
         { error: 'Replicate API key not configured' },
         { status: 500 }
@@ -44,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('Replicate API error:', error);
+      console.error(`[InpaintError] ID: ${requestId} | Replicate API error: ${error}`);
       return NextResponse.json(
         { error: 'Failed to start inpainting' },
         { status: 500 }
@@ -52,9 +60,13 @@ export async function POST(request: NextRequest) {
     }
 
     const prediction = await response.json();
+    const duration = Date.now() - startTime;
+    console.log(`[InpaintSuccess] ID: ${requestId} | PredictionID: ${prediction.id} | Duration: ${duration}ms`);
+    
     return NextResponse.json({ predictionId: prediction.id });
   } catch (error) {
-    console.error('Inpainting error:', error);
+    const duration = Date.now() - startTime;
+    console.error(`[InpaintError] ID: ${requestId} | Error: ${error} | Duration: ${duration}ms`);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

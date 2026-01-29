@@ -17,6 +17,9 @@ import {
   Image as SkiaImage,
   useImage,
   Circle,
+  PaintStyle,
+  StrokeCap,
+  StrokeJoin,
 } from '@shopify/react-native-skia';
 import {
   GestureDetector,
@@ -119,9 +122,10 @@ export function BrushMaskScreen({ imageUri, onComplete, onBack }: BrushMaskScree
     // Draw white paths (areas to inpaint/clean)
     const whitePaint = Skia.Paint();
     whitePaint.setColor(Skia.Color('white'));
-    whitePaint.setStyle(1); // Stroke
-    whitePaint.setStrokeCap(1); // Round
-    whitePaint.setStrokeJoin(1); // Round
+    whitePaint.setStyle(PaintStyle.Stroke);
+    whitePaint.setStrokeCap(StrokeCap.Round);
+    whitePaint.setStrokeJoin(StrokeJoin.Round);
+    whitePaint.setAntiAlias(false); // Pure binary mask, no anti-aliasing
 
     paths.forEach(({ path, strokeWidth }) => {
       // Scale the path to match the original image dimensions
