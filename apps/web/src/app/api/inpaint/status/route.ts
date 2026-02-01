@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { KLEAR_API_KEY_HEADER } from '@klear/shared';
 
 export async function GET(request: NextRequest) {
+  // --- Security Check ---
+  const clientApiKey = request.headers.get(KLEAR_API_KEY_HEADER);
+  const serverApiKey = process.env.KLEAR_API_KEY;
+
+  if (!serverApiKey || clientApiKey !== serverApiKey) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const predictionId = searchParams.get('id');
 
