@@ -36,3 +36,5 @@ export const INPAINTING_PROMPT =
 
 // API endpoints - change for production
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+export const KLEAR_API_KEY_HEADER = 'x-klear-api-key';
