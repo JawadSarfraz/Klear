@@ -165,7 +165,10 @@ export function useAppState() {
       // Call inpainting API
       const response = await fetch('/api/inpaint', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-klear-api-key': process.env.NEXT_PUBLIC_KLEAR_API_KEY || '',
+        },
         body: JSON.stringify({
           image: state.originalImage,
           mask: maskData,
@@ -173,7 +176,8 @@ export function useAppState() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start inpainting');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to start inpainting');
       }
 
       const { predictionId } = await response.json();
@@ -185,7 +189,11 @@ export function useAppState() {
       while (attempts < maxAttempts) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        const statusResponse = await fetch(`/api/inpaint/status?id=${predictionId}`);
+        const statusResponse = await fetch(`/api/inpaint/status?id=${predictionId}`, {
+          headers: {
+            'x-klear-api-key': process.env.NEXT_PUBLIC_KLEAR_API_KEY || '',
+          }
+        });
         const statusData = await statusResponse.json();
 
         if (statusData.status === 'succeeded') {
