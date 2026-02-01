@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { INPAINTING_PROMPT } from '@/lib/constants';
+import { INPAINTING_PROMPT, KLEAR_API_KEY_HEADER } from '@klear/shared';
 import sharp from 'sharp';
 
 export async function POST(request: NextRequest) {
@@ -7,10 +7,17 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
   try {
+    // --- Security Check ---
+    const clientApiKey = request.headers.get(KLEAR_API_KEY_HEADER);
+    const serverApiKey = process.env.KLEAR_API_KEY;
+
+    if (!serverApiKey || clientApiKey !== serverApiKey) {
+      console.error(`[SecurityError] ID: ${requestId} | Invalid or missing API key`);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { image, mask, strength = 0.85, guidance_scale = 7.5 } = body;
-
-    console.log(`[InpaintRequest] ID: ${requestId} | ImageSize: ${image?.length || 0} bytes | MaskSize: ${mask?.length || 0} bytes`);
 
     if (!image || !mask) {
       console.error(`[InpaintError] ID: ${requestId} | Missing image or mask`);
@@ -18,6 +25,23 @@ export async function POST(request: NextRequest) {
         { error: 'Image and mask are required' },
         { status: 400 }
       );
+    }
+
+    // --- Dimension Logging & Validation ---
+    const imageBuffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    const maskBuffer = Buffer.from(mask.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+    
+    const imageMeta = await sharp(imageBuffer).metadata();
+    const maskMeta = await sharp(maskBuffer).metadata();
+
+    console.log(`[InpaintRequest] ID: ${requestId} | ` +
+      `Img: ${imageMeta.width}x${imageMeta.height} (${image.length}b) | ` +
+      `Mask: ${maskMeta.width}x${maskMeta.height} (${mask.length}b) | ` +
+      `Strength: ${strength} | Guidance: ${guidance_scale}`);
+
+    if (imageMeta.width !== maskMeta.width || imageMeta.height !== maskMeta.height) {
+      console.error(`[InpaintError] ID: ${requestId} | Dimension mismatch: Img ${imageMeta.width}x${imageMeta.height} vs Mask ${maskMeta.width}x${maskMeta.height}`);
+      return NextResponse.json({ error: 'Image and mask dimensions must match exactly' }, { status: 400 });
     }
 
     const apiKey = process.env.REPLICATE_API_TOKEN;
@@ -31,7 +55,6 @@ export async function POST(request: NextRequest) {
 
     // --- Mask Preprocessing: Dilation ---
     // This grows the mask by a few pixels to ensure edges are fully covered
-    const maskBuffer = Buffer.from(mask.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const dilatedMaskBuffer = await sharp(maskBuffer)
       .grayscale()
       .convolve({
