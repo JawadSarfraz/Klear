@@ -17,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { StatusBar } from 'expo-status-bar';
 import Slider from '@react-native-community/slider';
-import { startInpainting, pollForCompletion } from './src/api';
+import { startInpainting, pollForCompletion, generatePlan, pollForPlan } from './src/api';
 import { saveSession, loadSession, saveTasks, clearSession } from './src/storage';
 import { BrushMaskScreen } from './src/BrushMaskScreen';
 
@@ -227,24 +227,55 @@ function AppContent() {
     setIsRetrying(false);
   };
 
-  const handleViewTasks = () => {
+  const handleViewTasks = async () => {
+    if (!selectedImageBase64) return;
+
     triggerHaptic('medium');
-    const maxTasks = TIME_BUDGETS[timeBudget].maxTasks;
-    const filteredTasks = SAMPLE_TASKS.slice(0, maxTasks).map(t => ({ ...t, completed: false }));
-    setTasks(filteredTasks);
-    
-    // Save session
-    if (selectedImage && cleanedImage) {
-      saveSession({
-        originalImage: selectedImage,
-        cleanedImage: cleanedImage,
-        timeBudget,
-        tasks: filteredTasks,
-        createdAt: new Date().toISOString(),
+    setStep('processing');
+    setProcessingStatus('AI is analyzing your room...');
+    setError(null);
+
+    try {
+      const { predictionId } = await generatePlan(selectedImageBase64, timeBudget);
+      
+      const realTasks = await pollForPlan(predictionId, (status) => {
+        if (status === 'processing') {
+          setProcessingStatus('Creating your cleaning plan...');
+        }
       });
+
+      setTasks(realTasks.map((t: any) => ({ ...t, completed: false })));
+      
+      // Save session
+      if (selectedImage && cleanedImage) {
+        saveSession({
+          originalImage: selectedImage,
+          cleanedImage: cleanedImage,
+          timeBudget,
+          tasks: realTasks,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      
+      setStep('tasks');
+      triggerHaptic('success');
+    } catch (err) {
+      console.error('Plan generation failed:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create plan';
+      setError(errorMessage);
+      setStep('result');
+      triggerHaptic('error');
+      Alert.alert('Error', 'Could not generate a personalized plan. Using default tasks instead.', [
+        { 
+          text: 'OK', 
+          onPress: () => {
+            const maxTasks = TIME_BUDGETS[timeBudget].maxTasks;
+            setTasks(SAMPLE_TASKS.slice(0, maxTasks).map(t => ({ ...t, completed: false })));
+            setStep('tasks');
+          } 
+        }
+      ]);
     }
-    
-    setStep('tasks');
   };
 
   const toggleTask = (taskId: string) => {
@@ -595,7 +626,7 @@ function AppContent() {
               <View style={[styles.taskCheckbox, task.completed && styles.taskCheckboxChecked]}>
                 {task.completed && <Text style={styles.taskCheckmark}>✓</Text>}
               </View>
-              <View style={styles.taskContent}>
+              <View style={task.completed ? styles.taskContent : styles.taskContent}>
                 <View style={styles.taskHeader}>
                   <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
                     {task.title}
