@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       const error = await response.text();
       console.error(`[InpaintError] ID: ${requestId} | Replicate API error: ${error}`);
       return NextResponse.json(
-        { error: 'Failed to start inpainting' },
+        { error: `Inpainting failed: ${error}` },
         { status: 500 }
       );
     }
