@@ -1,17 +1,25 @@
+import { KLEAR_API_KEY_HEADER } from '@klear/shared';
+
 // API service for Klear mobile app
 
 // Configure API URL via environment variable:
 // Create a .env file with: EXPO_PUBLIC_API_URL=http://your-ip:3000
 // Or for production: EXPO_PUBLIC_API_URL=https://your-domain.vercel.app
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const KLEAR_API_KEY = process.env.EXPO_PUBLIC_KLEAR_API_KEY || '';
 
 export interface InpaintResponse {
+  predictionId: string;
+}
+
+export interface PlanResponse {
   predictionId: string;
 }
 
 export interface PredictionStatus {
   status: 'starting' | 'processing' | 'succeeded' | 'failed';
   output?: string | string[];
+  tasks?: any[]; // For plan generation
   error?: string;
 }
 
@@ -22,7 +30,10 @@ export async function startInpainting(
 ): Promise<InpaintResponse> {
   const response = await fetch(`${API_BASE_URL}/api/inpaint`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
+    },
     body: JSON.stringify({
       image: imageBase64,
       mask: maskBase64,
@@ -39,11 +50,53 @@ export async function startInpainting(
   return response.json();
 }
 
+export async function generatePlan(
+  imageBase64: string,
+  timeBudget: string
+): Promise<PlanResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/plan`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
+    },
+    body: JSON.stringify({
+      image: imageBase64,
+      timeBudget,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Failed to start analysis');
+  }
+
+  return response.json();
+}
+
 export async function getPredictionStatus(predictionId: string): Promise<PredictionStatus> {
-  const response = await fetch(`${API_BASE_URL}/api/inpaint/status?id=${predictionId}`);
+  const response = await fetch(`${API_BASE_URL}/api/inpaint/status?id=${predictionId}`, {
+    headers: {
+      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
+    }
+  });
 
   if (!response.ok) {
     throw new Error('Failed to get prediction status');
+  }
+
+  return response.json();
+}
+
+export async function getPlanStatus(predictionId: string): Promise<PredictionStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/plan/status?id=${predictionId}`, {
+    headers: {
+      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to get plan status');
   }
 
   return response.json();
@@ -77,6 +130,35 @@ export async function pollForCompletion(
   }
 
   throw new Error('Inpainting timed out');
+}
+
+export async function pollForPlan(
+  predictionId: string,
+  onProgress?: (status: string) => void,
+  maxAttempts = 60,
+  intervalMs = 2000
+): Promise<any[]> {
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    const status = await getPlanStatus(predictionId);
+    
+    onProgress?.(status.status);
+
+    if (status.status === 'succeeded') {
+      if (!status.tasks) throw new Error('No plan generated');
+      return status.tasks;
+    }
+
+    if (status.status === 'failed') {
+      throw new Error(status.error || 'Analysis failed');
+    }
+
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+    attempts++;
+  }
+
+  throw new Error('Analysis timed out');
 }
 
 // Generate a simple white mask (process entire image)
