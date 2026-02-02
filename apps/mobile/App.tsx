@@ -231,51 +231,51 @@ function AppContent() {
     if (!selectedImageBase64) return;
 
     triggerHaptic('medium');
-    setStep('processing');
-    setProcessingStatus('AI is analyzing your room...');
-    setError(null);
+      setStep('processing');
+      setProcessingStatus('AI is analyzing your room...');
+      setError(null);
 
-    try {
-      const { predictionId } = await generatePlan(selectedImageBase64, timeBudget);
-      
-      const realTasks = await pollForPlan(predictionId, (status) => {
-        if (status === 'processing') {
-          setProcessingStatus('Creating your cleaning plan...');
-        }
-      });
-
-      setTasks(realTasks.map((t: any) => ({ ...t, completed: false })));
-      
-      // Save session
-      if (selectedImage && cleanedImage) {
-        saveSession({
-          originalImage: selectedImage,
-          cleanedImage: cleanedImage,
-          timeBudget,
-          tasks: realTasks,
-          createdAt: new Date().toISOString(),
+      try {
+        const { predictionId } = await generatePlan(selectedImageBase64, timeBudget);
+        
+        const realTasks = await pollForPlan(predictionId, (status) => {
+          if (status === 'processing') {
+            setProcessingStatus('Creating your cleaning plan...');
+          }
         });
-      }
-      
-      setStep('tasks');
-      triggerHaptic('success');
-    } catch (err) {
-      console.error('Plan generation failed:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create plan';
-      setError(errorMessage);
-      setStep('result');
-      triggerHaptic('error');
-      Alert.alert('Error', 'Could not generate a personalized plan. Using default tasks instead.', [
-        { 
-          text: 'OK', 
-          onPress: () => {
-            const maxTasks = TIME_BUDGETS[timeBudget].maxTasks;
-            setTasks(SAMPLE_TASKS.slice(0, maxTasks).map(t => ({ ...t, completed: false })));
-            setStep('tasks');
-          } 
+
+        setTasks(realTasks.map((t: any) => ({ ...t, completed: false })));
+        
+        // Save session
+        if (selectedImage && cleanedImage) {
+          saveSession({
+            originalImage: selectedImage,
+            cleanedImage: cleanedImage,
+            timeBudget,
+            tasks: realTasks,
+            createdAt: new Date().toISOString(),
+          });
         }
-      ]);
-    }
+        
+        setStep('tasks');
+        triggerHaptic('success');
+      } catch (err) {
+        console.error('Plan generation failed:', err);
+        const errorMessage = err instanceof Error ? err.message : 'Failed to create plan';
+        setError(errorMessage);
+        setStep('result');
+        triggerHaptic('error');
+        Alert.alert('Analysis Note', `Could not generate a personalized plan: ${errorMessage}. Using default tasks instead.`, [
+          { 
+            text: 'Proceed with Defaults', 
+            onPress: () => {
+              const maxTasks = TIME_BUDGETS[timeBudget].maxTasks;
+              setTasks(SAMPLE_TASKS.slice(0, maxTasks).map(t => ({ ...t, completed: false })));
+              setStep('tasks');
+            } 
+          }
+        ]);
+      }
   };
 
   const toggleTask = (taskId: string) => {
