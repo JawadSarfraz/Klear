@@ -27,22 +27,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // --- Dimension Logging & Validation ---
+    // --- Dimension Logging & Normalization ---
     const imageBuffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     const maskBuffer = Buffer.from(mask.replace(/^data:image\/\w+;base64,/, ''), 'base64');
     
     const imageMeta = await sharp(imageBuffer).metadata();
     const maskMeta = await sharp(maskBuffer).metadata();
 
+    if (!imageMeta.width || !imageMeta.height) {
+      throw new Error('Invalid image dimensions');
+    }
+
     console.log(`[InpaintRequest] ID: ${requestId} | ` +
       `Img: ${imageMeta.width}x${imageMeta.height} (${image.length}b) | ` +
       `Mask: ${maskMeta.width}x${maskMeta.height} (${mask.length}b) | ` +
       `Strength: ${strength} | Guidance: ${guidance_scale}`);
 
-    if (imageMeta.width !== maskMeta.width || imageMeta.height !== maskMeta.height) {
-      console.error(`[InpaintError] ID: ${requestId} | Dimension mismatch: Img ${imageMeta.width}x${imageMeta.height} vs Mask ${maskMeta.width}x${maskMeta.height}`);
-      return NextResponse.json({ error: 'Image and mask dimensions must match exactly' }, { status: 400 });
-    }
+    // --- Mask Preprocessing: Resize & Dilation ---
+    // 1. Force mask to match image dimensions (Normalization)
+    // 2. Convolve to dilate (edges coverage)
+    const processedMaskBuffer = await sharp(maskBuffer)
+      .resize(imageMeta.width, imageMeta.height, { fit: 'fill' }) // Bulletproof fix
+      .grayscale()
+      .convolve({
+        width: 3,
+        height: 3,
+        kernel: [1, 1, 1, 1, 1, 1, 1, 1, 1] // Dilation kernel
+      })
+      .toBuffer();
+    
+    const processedMask = `data:image/png;base64,${processedMaskBuffer.toString('base64')}`;
 
     const apiKey = process.env.REPLICATE_API_TOKEN;
     if (!apiKey) {
@@ -52,19 +66,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    // --- Mask Preprocessing: Dilation ---
-    // This grows the mask by a few pixels to ensure edges are fully covered
-    const dilatedMaskBuffer = await sharp(maskBuffer)
-      .grayscale()
-      .convolve({
-        width: 3,
-        height: 3,
-        kernel: [1, 1, 1, 1, 1, 1, 1, 1, 1] // Simple dilation kernel
-      })
-      .toBuffer();
-    
-    const processedMask = `data:image/png;base64,${dilatedMaskBuffer.toString('base64')}`;
 
     // Call Replicate API for SDXL inpainting
     const response = await fetch('https://api.replicate.com/v1/predictions', {
