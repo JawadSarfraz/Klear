@@ -13,6 +13,12 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Increase payload limit for large base64 images
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
 };
 
 export default nextConfig;

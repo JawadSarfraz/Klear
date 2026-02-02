@@ -43,8 +43,11 @@ export async function startInpainting(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Failed to start inpainting');
+    const error = await response.json().catch(() => null);
+    if (error && error.error) {
+      throw new Error(error.error);
+    }
+    throw new Error(`Server returned error ${response.status}: ${response.statusText}`);
   }
 
   return response.json();
@@ -67,8 +70,11 @@ export async function generatePlan(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    throw new Error(error.error || 'Failed to start analysis');
+    const error = await response.json().catch(() => null);
+    if (error && error.error) {
+      throw new Error(error.error);
+    }
+    throw new Error(`Server returned error ${response.status}: ${response.statusText}`);
   }
 
   return response.json();
