@@ -33,24 +33,19 @@ export async function POST(request: NextRequest) {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
+        'Prefer': 'wait'
       },
       body: JSON.stringify({
         // Llama 3.2 Vision model
         version: '90a3693f73602497fc67702f928e07971775e18f2d573880f08a3d3c7f9996e3',
         input: {
           image: image,
-          prompt: `Analyze this messy room and create a structured cleaning plan for a ${timeBudget} session. 
-          Return ONLY a JSON array of tasks. Each task must have:
-          - id: string (unique)
-          - title: string (short, actionable)
-          - description: string (detailed instructions)
-          - estimatedMinutes: number
-          - priority: "high" | "medium" | "low"
-          
-          Example format:
-          [
-            {"id": "1", "title": "Clear surface", "description": "Remove clutter from table", "estimatedMinutes": 5, "priority": "high"}
-          ]`,
+          max_tokens: 1024,
+          temperature: 0.1,
+          prompt: `Analyze this room photo and create a structured cleaning plan for a ${timeBudget} session. 
+          Focus on visible clutter. Return ONLY a JSON array of tasks. 
+          Each task must have: id, title, description, estimatedMinutes, priority.
+          Example: [{"id": "1", "title": "Clear surface", "description": "Remove items from table", "estimatedMinutes": 5, "priority": "high"}]`,
         },
       }),
     });
