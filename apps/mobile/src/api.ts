@@ -3,10 +3,19 @@ import { KLEAR_API_KEY_HEADER } from '@klear/shared';
 // API service for Klear mobile app
 
 // Configure API URL via environment variable:
-// Create a .env file with: EXPO_PUBLIC_API_URL=http://your-ip:3000
-// Or for production: EXPO_PUBLIC_API_URL=https://your-domain.vercel.app
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const getBaseUrl = () => {
+  let url = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+  // Remove trailing slash
+  url = url.replace(/\/$/, '');
+  // If the user accidentally included /api in the env, remove it because we add it in the calls
+  url = url.replace(/\/api$/, '');
+  return url;
+};
+
+const API_BASE_URL = getBaseUrl();
 const KLEAR_API_KEY = process.env.EXPO_PUBLIC_KLEAR_API_KEY || '';
+
+console.log(`[API] Initialized with Base URL: ${API_BASE_URL}`);
 
 export interface InpaintResponse {
   predictionId: string;
