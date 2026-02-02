@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const error = await response.text();
       console.error(`[PlanError] ID: ${requestId} | Replicate API error: ${error}`);
-      return NextResponse.json({ error: 'Failed to start analysis' }, { status: 500 });
+      return NextResponse.json({ error: `Analysis failed: ${error}` }, { status: 500 });
     }
 
     const prediction = await response.json();
