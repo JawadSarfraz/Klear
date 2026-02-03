@@ -1,6 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { KLEAR_API_KEY_HEADER } from '@klear/shared';
 
+// Robust JSON extraction from conversational AI output
+function extractJsonArray(text: string): any[] | null {
+  if (!text) return null;
+
+  // Remove markdown fences (```json ... ```)
+  const cleaned = text
+    .replace(/```json/gi, '')
+    .replace(/```/g, '')
+    .trim();
+
+  // Try to find the first JSON array in the text
+  const start = cleaned.indexOf('[');
+  const end = cleaned.lastIndexOf(']');
+  
+  if (start === -1 || end === -1 || end < start) {
+    return null;
+  }
+
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
 export async function GET(request: NextRequest) {
   // --- Security Check ---
   const clientApiKey = request.headers.get(KLEAR_API_KEY_HEADER);
@@ -36,18 +57,12 @@ export async function GET(request: NextRequest) {
     // For vision models, the output might be a string containing JSON
     let tasks = null;
     if (prediction.status === 'succeeded' && prediction.output) {
+      const outputString = Array.isArray(prediction.output) ? prediction.output.join('') : prediction.output;
       try {
-        const outputString = Array.isArray(prediction.output) ? prediction.output.join('') : prediction.output;
-        // Extract JSON array from the output string (Llama might include conversational filler)
-        // Using [\s\S]* to match across multiple lines instead of /s flag
-        const jsonMatch = outputString.match(/\[[\s\S]*\]/);
-        if (jsonMatch) {
-          tasks = JSON.parse(jsonMatch[0]);
-        } else {
-          tasks = JSON.parse(outputString);
-        }
+        tasks = extractJsonArray(outputString);
       } catch (e) {
-        console.error('Failed to parse tasks from vision output:', e);
+        console.error('[PlanError] Failed to parse tasks from vision output:', e);
+        console.error('[PlanError] Raw output:', outputString);
       }
     }
 
