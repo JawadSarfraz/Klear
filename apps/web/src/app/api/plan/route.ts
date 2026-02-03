@@ -42,10 +42,12 @@ export async function POST(request: NextRequest) {
           image: image,
           max_tokens: 1024,
           temperature: 0.1,
-          prompt: `Analyze this room photo and create a structured cleaning plan for a ${timeBudget} session. 
-          Focus on visible clutter. Return ONLY a JSON array of tasks. 
-          Each task must have: id, title, description, estimatedMinutes, priority.
-          Example: [{"id": "1", "title": "Clear surface", "description": "Remove items from table", "estimatedMinutes": 5, "priority": "high"}]`,
+          prompt: `Return ONLY valid JSON. No prose. No markdown. No explanation. Output must start with [ and end with ].
+
+Analyze this room and create a ${timeBudget} cleaning plan as a JSON array.
+Each task: {"id": "string", "title": "string", "description": "string", "estimatedMinutes": number, "priority": "high"|"medium"|"low"}
+
+If you can't return valid JSON, return []`,
         },
       }),
     });
