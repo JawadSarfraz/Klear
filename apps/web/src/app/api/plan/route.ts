@@ -31,13 +31,13 @@ export async function POST(request: NextRequest) {
     const response = await fetch('https://api.replicate.com/v1/predictions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Token ${apiKey}`,
         'Content-Type': 'application/json',
         'Prefer': 'wait'
       },
       body: JSON.stringify({
-        // Official Public Llama 3.2 11B Vision Instruct
-        version: "e244f012c4c6b3c65e9d309199a95c4b3f0d0337e92855fb3bb09ed31f683bb9",
+        // Verified Public Llama 3.2 11B Vision Instruct
+        version: "d4e81fc1472556464f1ee5cea4de177b2fe95a6eaadb5f63335df1ba654597af",
         input: {
           image: image,
           max_tokens: 1024,
