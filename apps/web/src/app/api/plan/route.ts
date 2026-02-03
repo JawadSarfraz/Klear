@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
         'Prefer': 'wait'
       },
       body: JSON.stringify({
-        // Llama 3.2 Vision model
-        version: '90a3693f73602497fc67702f928e07971775e18f2d573880f08a3d3c7f9996e3',
+        // Official Public Llama 3.2 11B Vision Instruct
+        version: "e244f012c4c6b3c65e9d309199a95c4b3f0d0337e92855fb3bb09ed31f683bb9",
         input: {
           image: image,
           max_tokens: 1024,
