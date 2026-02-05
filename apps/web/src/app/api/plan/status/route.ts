@@ -6,25 +6,48 @@ function extractJsonArray(text: string): any[] | null {
   if (!text) return null;
 
   // Remove markdown fences (```json ... ```)
-  const cleaned = text
+  let cleaned = text
     .replace(/```json/gi, '')
     .replace(/```/g, '')
     .trim();
 
-  // Try to find the first JSON array in the text
-  const start = cleaned.indexOf('[');
-  const end = cleaned.lastIndexOf(']');
+  // Try to find a JSON array first
+  const arrayStart = cleaned.indexOf('[');
+  const arrayEnd = cleaned.lastIndexOf(']');
   
-  if (start === -1 || end === -1 || end < start) {
-    return null;
+  if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+    const jsonStr = cleaned.slice(arrayStart, arrayEnd + 1);
+    try {
+      const parsed = JSON.parse(jsonStr);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      // Try cleaning trailing commas
+      try {
+        const fixedJson = jsonStr.replace(/,\s*([\]}])/g, '$1');
+        const parsed = JSON.parse(fixedJson);
+        return Array.isArray(parsed) ? parsed : [parsed];
+      } catch (e2) {
+        console.error('[PlanError] JSON array parse failed:', e2);
+      }
+    }
   }
 
-  try {
-    return JSON.parse(cleaned.slice(start, end + 1));
-  } catch (e) {
-    console.error('[PlanError] JSON parse failed after extraction:', e);
-    return null;
+  // Fallback: Try to find a single JSON object
+  const objStart = cleaned.indexOf('{');
+  const objEnd = cleaned.lastIndexOf('}');
+  if (objStart !== -1 && objEnd !== -1 && objEnd > objStart) {
+    const jsonStr = cleaned.slice(objStart, objEnd + 1);
+    try {
+      const parsed = JSON.parse(jsonStr);
+      return [parsed];
+    } catch (e) {
+      console.error('[PlanError] JSON object parse failed:', e);
+    }
   }
+
+  console.error('[PlanError] No valid JSON array or object found in AI output');
+  console.error('[PlanError] Raw output head:', text.slice(0, 200));
+  return null;
 }
 
 /**
@@ -32,21 +55,23 @@ function extractJsonArray(text: string): any[] | null {
  * Ensures every task has the required fields and reasonable defaults.
  */
 function sanitizeTasks(tasks: any[]): CleaningTask[] {
-  if (!Array.isArray(tasks)) return [];
+  const taskArray = Array.isArray(tasks) ? tasks : [tasks];
 
-  return tasks
-    .filter(t => t && typeof t === 'object')
+  return taskArray
+    .filter(t => t !== null && t !== undefined)
     .map((t, index) => {
+      const isObj = typeof t === 'object' && !Array.isArray(t);
       const sanitized: CleaningTask = {
-        id: String(t.id || index + 1),
-        title: String(t.title || 'Cleaning task'),
-        description: String(t.description || ''),
-        estimatedMinutes: Number(t.estimatedMinutes) || 5,
-        priority: ['high', 'medium', 'low'].includes(t.priority) 
+        id: String(isObj ? (t.id || index + 1) : (index + 1)),
+        title: String(isObj ? (t.title || 'Cleaning task') : t),
+        description: String(isObj ? (t.description || '') : ''),
+        estimatedMinutes: Number(isObj ? t.estimatedMinutes : 5) || 5,
+        priority: (isObj && ['high', 'medium', 'low'].includes(t.priority))
           ? (t.priority as TaskPriority) 
           : 'medium',
         status: 'pending' as TaskStatus,
-        area: String(t.area || 'General'),
+        area: String((isObj && t.area) || 'General'),
+        completed: false
       };
       return sanitized;
     });

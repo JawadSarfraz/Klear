@@ -14,6 +14,7 @@ export interface CleaningTask {
   priority: TaskPriority;
   status: TaskStatus;
   area: string; // e.g., "desk", "floor", "shelves"
+  completed: boolean;
 }
 
 export interface CleaningPlan {
@@ -52,6 +53,10 @@ export interface InpaintRequest {
 }
 
 export interface InpaintResponse {
+  predictionId: string;
+}
+
+export interface PlanResponse {
   predictionId: string;
 }
 
