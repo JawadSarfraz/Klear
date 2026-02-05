@@ -18,6 +18,8 @@ export interface StoredSession {
     estimatedMinutes: number;
     priority: 'high' | 'medium' | 'low';
     completed: boolean;
+    area: string;
+    status?: 'pending' | 'in_progress' | 'completed' | 'skipped';
   }>;
   createdAt: string;
 }
