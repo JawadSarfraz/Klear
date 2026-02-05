@@ -55,8 +55,17 @@ export interface InpaintResponse {
   predictionId: string;
 }
 
+export interface PlanStatusResponse {
+  status: 'starting' | 'processing' | 'succeeded' | 'failed';
+  predictionId: string;
+  tasks: CleaningTask[] | null;
+  error?: string;
+  rawOutput?: string;
+}
+
 export interface PredictionStatus {
   status: 'starting' | 'processing' | 'succeeded' | 'failed';
   output?: string | string[];
   error?: string;
+  tasks?: CleaningTask[];
 }
