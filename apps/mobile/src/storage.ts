@@ -1,5 +1,6 @@
 // Storage utility for Klear mobile app
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CleaningTask } from '@klear/shared';
 
 const STORAGE_KEYS = {
   TASKS: '@klear/tasks',
@@ -11,16 +12,7 @@ export interface StoredSession {
   originalImage: string;
   cleanedImage: string;
   timeBudget: string;
-  tasks: Array<{
-    id: string;
-    title: string;
-    description: string;
-    estimatedMinutes: number;
-    priority: 'high' | 'medium' | 'low';
-    completed: boolean;
-    area: string;
-    status?: 'pending' | 'in_progress' | 'completed' | 'skipped';
-  }>;
+  tasks: CleaningTask[];
   createdAt: string;
 }
 
