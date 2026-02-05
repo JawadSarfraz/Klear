@@ -21,20 +21,12 @@ import Slider from '@react-native-community/slider';
 import { startInpainting, pollForCompletion, generatePlan, pollForPlan } from './src/api';
 import { saveSession, loadSession, saveTasks, clearSession } from './src/storage';
 import { BrushMaskScreen } from './src/BrushMaskScreen';
+import { CleaningTask } from '@klear/shared';
 
 type AppStep = 'home' | 'preview' | 'mask' | 'timeBudget' | 'processing' | 'result' | 'tasks';
 type TimeBudget = '15min' | '1hr' | 'weekend';
 
-interface CleaningTask {
-  id: string;
-  title: string;
-  description: string;
-  estimatedMinutes: number;
-  priority: 'high' | 'medium' | 'low';
-  completed: boolean;
-  area: string;
-  status?: 'pending' | 'in_progress' | 'completed' | 'skipped';
-}
+// Local interface removed in favor of shared type
 
 const TIME_BUDGETS = {
   '15min': { label: '15 Minutes', description: 'Quick wins only', icon: '⚡', maxTasks: 3 },
@@ -43,14 +35,14 @@ const TIME_BUDGETS = {
 };
 
 const SAMPLE_TASKS: CleaningTask[] = [
-  { id: '1', title: 'Clear desk surface', description: 'Remove items, wipe down, keep essentials only', estimatedMinutes: 5, priority: 'high', completed: false, area: 'Desk' },
-  { id: '2', title: 'Organize loose cables', description: 'Bundle and route cables neatly', estimatedMinutes: 8, priority: 'high', completed: false, area: 'Cables' },
-  { id: '3', title: 'Put away dishes', description: 'Take cups/plates to kitchen', estimatedMinutes: 3, priority: 'high', completed: false, area: 'General' },
-  { id: '4', title: 'Sort papers', description: 'File, recycle, or action pile', estimatedMinutes: 10, priority: 'medium', completed: false, area: 'Papers' },
-  { id: '5', title: 'Dust surfaces', description: 'Wipe down all visible surfaces', estimatedMinutes: 8, priority: 'medium', completed: false, area: 'General' },
-  { id: '6', title: 'Empty trash', description: 'Empty bins and replace bags', estimatedMinutes: 3, priority: 'medium', completed: false, area: 'General' },
-  { id: '7', title: 'Organize shelf items', description: 'Arrange books and items neatly', estimatedMinutes: 10, priority: 'low', completed: false, area: 'Shelves' },
-  { id: '8', title: 'Vacuum floor', description: 'Vacuum entire floor area', estimatedMinutes: 12, priority: 'low', completed: false, area: 'Floor' },
+  { id: '1', title: 'Clear desk surface', description: 'Remove items, wipe down, keep essentials only', estimatedMinutes: 5, priority: 'high', completed: false, area: 'Desk', status: 'pending' },
+  { id: '2', title: 'Organize loose cables', description: 'Bundle and route cables neatly', estimatedMinutes: 8, priority: 'high', completed: false, area: 'Cables', status: 'pending' },
+  { id: '3', title: 'Put away dishes', description: 'Take cups/plates to kitchen', estimatedMinutes: 3, priority: 'high', completed: false, area: 'General', status: 'pending' },
+  { id: '4', title: 'Sort papers', description: 'File, recycle, or action pile', estimatedMinutes: 10, priority: 'medium', completed: false, area: 'Papers', status: 'pending' },
+  { id: '5', title: 'Dust surfaces', description: 'Wipe down all visible surfaces', estimatedMinutes: 8, priority: 'medium', completed: false, area: 'General', status: 'pending' },
+  { id: '6', title: 'Empty trash', description: 'Empty bins and replace bags', estimatedMinutes: 3, priority: 'medium', completed: false, area: 'General', status: 'pending' },
+  { id: '7', title: 'Organize shelf items', description: 'Arrange books and items neatly', estimatedMinutes: 10, priority: 'low', completed: false, area: 'Shelves', status: 'pending' },
+  { id: '8', title: 'Vacuum floor', description: 'Vacuum entire floor area', estimatedMinutes: 12, priority: 'low', completed: false, area: 'Floor', status: 'pending' },
 ];
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
