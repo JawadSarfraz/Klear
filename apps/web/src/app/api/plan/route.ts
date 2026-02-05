@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Replicate API key not configured' }, { status: 500 });
     }
 
-    console.log(`[PlanRequest] ID: ${requestId} | TimeBudget: ${timeBudget}`);
+    const deviceId = request.headers.get('x-device-id') || 'unknown';
+    console.log(`[PlanRequest] ID: ${requestId} | Device: ${deviceId} | Budget: ${timeBudget}`);
 
     // Call Llama 3.2 Vision for room analysis and task generation
     const response = await fetch('https://api.replicate.com/v1/predictions', {
