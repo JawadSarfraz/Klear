@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const STORAGE_KEYS = {
   TASKS: '@klear/tasks',
   LAST_SESSION: '@klear/last_session',
+  DEVICE_ID: '@klear_device_id',
 };
 
 export interface StoredSession {
@@ -19,6 +20,27 @@ export interface StoredSession {
     completed: boolean;
   }>;
   createdAt: string;
+}
+
+/**
+ * Generate a simple fallback UUID if uuid library is not available
+ */
+function generateSimpleId() {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
+export async function getDeviceId(): Promise<string> {
+  try {
+    let deviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
+    if (!deviceId) {
+      deviceId = generateSimpleId();
+      await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, deviceId);
+    }
+    return deviceId;
+  } catch (e) {
+    console.error('Failed to get device ID', e);
+    return 'unknown-device';
+  }
 }
 
 export async function saveSession(session: StoredSession): Promise<void> {
