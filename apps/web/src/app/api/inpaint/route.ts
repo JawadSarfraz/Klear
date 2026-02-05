@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { INPAINTING_PROMPT, KLEAR_API_KEY_HEADER } from '@klear/shared';
 import sharp from 'sharp';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
   const startTime = Date.now();
+
+  // --- Rate Limiting (KLEAR-202) ---
+  const rateLimitResponse = checkRateLimit(request);
+  if (rateLimitResponse) return rateLimitResponse;
   
   try {
     // --- Security Check ---
