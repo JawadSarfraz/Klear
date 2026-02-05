@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { KLEAR_API_KEY_HEADER } from '@klear/shared';
+import { checkRateLimit } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
   const requestId = Math.random().toString(36).substring(7);
+
+  // --- Rate Limiting (KLEAR-202) ---
+  const rateLimitResponse = checkRateLimit(request);
+  if (rateLimitResponse) return rateLimitResponse;
   
   try {
     // --- Security Check ---
