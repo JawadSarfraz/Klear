@@ -47,12 +47,21 @@ export async function POST(request: NextRequest) {
           image: image,
           max_tokens: 1024,
           temperature: 0.1,
-          prompt: `Return ONLY valid JSON. No prose. No markdown. No explanation. Output must start with [ and end with ].
+          prompt: `Return ONLY valid JSON. No prose. No markdown. No explanation. 
 
-Analyze this room and create a ${timeBudget} cleaning plan as a JSON array.
-Each task: {"id": "string", "title": "string", "description": "string", "estimatedMinutes": number, "priority": "high"|"medium"|"low"}
+Task: Analyze this room and create a ${timeBudget} cleaning plan as a JSON array.
 
-If you can't return valid JSON, return []`,
+Guidelines:
+1. Identify visible room zones (e.g., "desk surface", "floor area", "bedside").
+2. Look for clutter categories (e.g., "papers/mail", "cables/electronics", "dishes/cups", "clothes").
+3. Create actionable tasks referencing these zones and categories.
+4. Only mention specific objects if they are clearly visible. Otherwise, use categories.
+5. Prioritize "decluttering" first, then "surfaces", then "floor".
+
+Each task: {"id": "string", "title": "string", "description": "string", "estimatedMinutes": number, "priority": "high"|"medium"|"low", "area": "string"}
+
+Example output format:
+[{"id": "1", "title": "Clear papers from desk surface", "description": "Sort through mail and loose papers on the desk", "estimatedMinutes": 10, "priority": "high", "area": "Desk"}]`,
         },
       }),
     });
