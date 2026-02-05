@@ -9,6 +9,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
+  Share,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView, PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
@@ -77,6 +78,10 @@ function AppContent() {
   const [strength, setStrength] = useState(0.85);
   const [guidanceScale, setGuidanceScale] = useState(7.5);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isTimerActive, setIsTimerActive] = useState(false);
 
   // Load saved session on mount
   useEffect(() => {
@@ -98,6 +103,24 @@ function AppContent() {
       saveTasks(tasks);
     }
   }, [tasks]);
+
+  // Focus Mode Timer
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isTimerActive && timerSeconds > 0) {
+      interval = setInterval(() => {
+        setTimerSeconds(sec => {
+          if (sec <= 1) {
+            setIsTimerActive(false);
+            triggerHaptic('success');
+            return 0;
+          }
+          return sec - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isTimerActive, timerSeconds]);
 
   const triggerHaptic = useCallback((type: 'light' | 'medium' | 'success' | 'error') => {
     switch (type) {
@@ -278,6 +301,67 @@ function AppContent() {
           }
         ]);
       }
+  };
+
+  const handleSharePlan = async () => {
+    try {
+      const completedTasks = tasks.filter(t => t.completed).length;
+      const totalTasks = tasks.length;
+      const totalMins = tasks.reduce((sum, t) => sum + t.estimatedMinutes, 0);
+      
+      let message = `✨ My Klear Cleaning Plan\n\n`;
+      message += `I'm transforming my space! 🏠\n`;
+      message += `📊 Progress: ${completedTasks}/${totalTasks} tasks done\n`;
+      message += `⏱️ Estimated time: ${totalMins} minutes\n\n`;
+      message += `Tasks:\n`;
+      tasks.forEach((t) => {
+        message += `${t.completed ? '✅' : '⬜'} ${t.title}\n`;
+      });
+      message += `\nCleaned with Klear AI ✨`;
+
+      await Share.share({
+        message,
+        title: 'My Klear Plan',
+      });
+      triggerHaptic('success');
+    } catch (error) {
+      console.error('Error sharing plan:', error);
+    }
+  };
+
+  const startTaskTimer = (minutes: number) => {
+    setTimerSeconds(minutes * 60);
+    setIsTimerActive(true);
+    triggerHaptic('medium');
+  };
+
+  const toggleFocusMode = () => {
+    triggerHaptic('medium');
+    setIsFocusMode(!isFocusMode);
+    if (!isFocusMode) {
+      // Find first incomplete task
+      const firstIncomplete = tasks.findIndex(t => !t.completed);
+      setCurrentTaskIndex(firstIncomplete !== -1 ? firstIncomplete : 0);
+    }
+  };
+
+  const nextFocusTask = () => {
+    triggerHaptic('light');
+    const nextIndex = tasks.findIndex((t, i) => i > currentTaskIndex && !t.completed);
+    if (nextIndex !== -1) {
+      setCurrentTaskIndex(nextIndex);
+      setIsTimerActive(false);
+      setTimerSeconds(0);
+    } else {
+      setIsFocusMode(false);
+      Alert.alert('All done!', 'You\'ve reached the end of your focus list.');
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   const toggleTask = (taskId: string) => {
@@ -601,65 +685,116 @@ function AppContent() {
             <Text style={styles.backButton}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Your Plan</Text>
-          <View style={{ width: 50 }} />
+          <TouchableOpacity onPress={toggleFocusMode}>
+            <Text style={[styles.backButton, isFocusMode && { color: '#ef4444' }]}>
+              {isFocusMode ? 'Exit Focus' : 'Focus Mode'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.tasksContent}>
-          {/* Progress */}
-          <View style={styles.progressSection}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressTitle}>Your cleaning plan</Text>
-              <Text style={styles.progressCount}>{completedCount}/{tasks.length} tasks</Text>
+        {isFocusMode && tasks[currentTaskIndex] ? (
+          <View style={styles.focusContainer}>
+            <View style={styles.focusCard}>
+              <Text style={styles.focusArea}>{tasks[currentTaskIndex].area}</Text>
+              <Text style={styles.focusTitle}>{tasks[currentTaskIndex].title}</Text>
+              <Text style={styles.focusDescription}>{tasks[currentTaskIndex].description}</Text>
+              
+              <View style={styles.timerContainer}>
+                {isTimerActive ? (
+                  <Text style={styles.timerText}>{formatTime(timerSeconds)}</Text>
+                ) : (
+                  <TouchableOpacity 
+                    style={styles.startTimerButton}
+                    onPress={() => startTaskTimer(tasks[currentTaskIndex].estimatedMinutes)}
+                  >
+                    <Text style={styles.startTimerText}>Start {tasks[currentTaskIndex].estimatedMinutes}m Timer</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.primaryButton, { width: '100%' }]}
+                onPress={() => {
+                  toggleTask(tasks[currentTaskIndex].id);
+                  nextFocusTask();
+                }}
+              >
+                <Text style={styles.primaryButtonText}>Done & Next</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.secondaryButton, { width: '100%', marginBottom: 0 }]}
+                onPress={nextFocusTask}
+              >
+                <Text style={styles.secondaryButtonText}>Skip for now</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: `${(completedCount / tasks.length) * 100}%` }]} />
+            <View style={styles.focusProgress}>
+              <Text style={styles.focusProgressText}>Task {currentTaskIndex + 1} of {tasks.length}</Text>
             </View>
-            <Text style={styles.progressTime}>Estimated time: {totalMinutes} min</Text>
           </View>
-
-          {/* Tasks */}
-          {tasks.map(task => (
-            <TouchableOpacity 
-              key={task.id} 
-              style={[styles.taskCard, task.completed && styles.taskCardCompleted]}
-              onPress={() => toggleTask(task.id)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.taskCheckbox, task.completed && styles.taskCheckboxChecked]}>
-                {task.completed && <Text style={styles.taskCheckmark}>✓</Text>}
+        ) : (
+          <ScrollView style={styles.tasksContent}>
+            {/* Progress */}
+            <View style={styles.progressSection}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressTitle}>Your cleaning plan</Text>
+                <Text style={styles.progressCount}>{completedCount}/{tasks.length} tasks</Text>
               </View>
-              <View style={task.completed ? styles.taskContent : styles.taskContent}>
-                <View style={styles.taskHeader}>
-                  <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
-                    {task.title}
-                  </Text>
-                  <View style={[
-                    styles.priorityBadge,
-                    task.priority === 'high' && styles.priorityHigh,
-                    task.priority === 'medium' && styles.priorityMedium,
-                    task.priority === 'low' && styles.priorityLow,
-                  ]}>
-                    <Text style={styles.priorityText}>{task.priority}</Text>
-                  </View>
-                </View>
-                <Text style={styles.taskDescription}>{task.description}</Text>
-                <Text style={styles.taskTime}>{task.estimatedMinutes} min</Text>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${(completedCount / tasks.length) * 100}%` }]} />
               </View>
-            </TouchableOpacity>
-          ))}
-
-          {completedCount === tasks.length && tasks.length > 0 && (
-            <View style={styles.completionCard}>
-              <Text style={styles.completionEmoji}>🎉</Text>
-              <Text style={styles.completionTitle}>Amazing work!</Text>
-              <Text style={styles.completionText}>You've completed all your cleaning tasks</Text>
+              <Text style={styles.progressTime}>Estimated time: {totalMinutes} min</Text>
             </View>
-          )}
 
-          <TouchableOpacity style={styles.secondaryButton} onPress={handleReset}>
-            <Text style={styles.secondaryButtonText}>Clean Another Room</Text>
-          </TouchableOpacity>
-        </ScrollView>
+            {/* Tasks */}
+            {tasks.map(task => (
+              <TouchableOpacity 
+                key={task.id} 
+                style={[styles.taskCard, task.completed && styles.taskCardCompleted]}
+                onPress={() => toggleTask(task.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.taskCheckbox, task.completed && styles.taskCheckboxChecked]}>
+                  {task.completed && <Text style={styles.taskCheckmark}>✓</Text>}
+                </View>
+                <View style={task.completed ? styles.taskContent : styles.taskContent}>
+                  <View style={styles.taskHeader}>
+                    <Text style={[styles.taskTitle, task.completed && styles.taskTitleCompleted]}>
+                      {task.title}
+                    </Text>
+                    <View style={[
+                      styles.priorityBadge,
+                      task.priority === 'high' && styles.priorityHigh,
+                      task.priority === 'medium' && styles.priorityMedium,
+                      task.priority === 'low' && styles.priorityLow,
+                    ]}>
+                      <Text style={styles.priorityText}>{task.priority}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.taskDescription}>{task.description}</Text>
+                  <Text style={styles.taskTime}>{task.estimatedMinutes} min</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {completedCount === tasks.length && tasks.length > 0 && (
+              <View style={styles.completionCard}>
+                <Text style={styles.completionEmoji}>🎉</Text>
+                <Text style={styles.completionTitle}>Amazing work!</Text>
+                <Text style={styles.completionText}>You've completed all your cleaning tasks</Text>
+              </View>
+            )}
+
+            <TouchableOpacity style={[styles.primaryButton, { marginTop: 24 }]} onPress={handleSharePlan}>
+              <Text style={styles.primaryButtonText}>📤 Share My Progress</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleReset}>
+              <Text style={styles.secondaryButtonText}>Clean Another Room</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
       </SafeAreaView>
     );
   }
@@ -822,6 +957,77 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     marginBottom: 24,
+  },
+  // Focus Mode styles
+  focusContainer: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+  },
+  focusCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    elevation: 8,
+  },
+  focusArea: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3b82f6',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  focusTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  focusDescription: {
+    fontSize: 16,
+    color: '#4b5563',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  timerContainer: {
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  timerText: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    fontVariant: ['tabular-nums'],
+  },
+  startTimerButton: {
+    backgroundColor: '#eff6ff',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 100,
+  },
+  startTimerText: {
+    color: '#3b82f6',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  focusProgress: {
+    marginTop: 32,
+    alignItems: 'center',
+  },
+  focusProgressText: {
+    fontSize: 14,
+    color: '#9ca3af',
+    fontWeight: '500',
   },
   timeBudgetOptions: {
     gap: 12,
