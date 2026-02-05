@@ -192,7 +192,7 @@ function AppContent() {
 
     triggerHaptic('medium');
     setStep('processing');
-    setProcessingStatus('Starting AI processing...');
+    setProcessingStatus('Uploading to AI...');
     setError(null);
 
     try {
@@ -201,11 +201,11 @@ function AppContent() {
         guidance_scale: guidanceScale,
       });
       
-      setProcessingStatus('Generating clean space...');
-      
       const resultUrl = await pollForCompletion(predictionId, (status) => {
         if (status === 'processing') {
           setProcessingStatus('AI is cleaning your space...');
+        } else if (status === 'starting') {
+          setProcessingStatus('Preparing AI models...');
         }
       });
 
@@ -232,15 +232,17 @@ function AppContent() {
 
     triggerHaptic('medium');
       setStep('processing');
-      setProcessingStatus('AI is analyzing your room...');
+      setProcessingStatus('Analyzing room clutter...');
       setError(null);
 
       try {
         const { predictionId } = await generatePlan(selectedImageBase64, timeBudget);
         
-        const realTasks = await pollForPlan(predictionId, (status) => {
+        const realTasks = await pollForPlan(predictionId, timeBudget, (status) => {
           if (status === 'processing') {
-            setProcessingStatus('Creating your cleaning plan...');
+            setProcessingStatus('Identifying objects...');
+          } else if (status === 'starting') {
+            setProcessingStatus('Consulting cleaning AI...');
           }
         });
 
