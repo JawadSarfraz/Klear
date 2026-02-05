@@ -253,6 +253,10 @@ function AppContent() {
       setError(null);
 
       try {
+        // DEBUG: Log image size before sending
+        console.log('[DEBUG] Sending image to AI, size:', selectedImageBase64?.length || 0, 'chars');
+        console.log('[DEBUG] Image preview:', selectedImageBase64?.slice(0, 100));
+        
         const { predictionId } = await generatePlan(selectedImageBase64, timeBudget);
         
         const realTasks = await pollForPlan(predictionId, timeBudget, (status) => {
