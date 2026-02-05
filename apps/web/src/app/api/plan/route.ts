@@ -59,21 +59,32 @@ export async function POST(request: NextRequest) {
           image: image,
           max_tokens: 1024,
           temperature: 0.1,
-          prompt: `Return ONLY valid JSON. No prose. No markdown. No explanation. 
+          prompt: `You are analyzing a photo of a messy room. Create a personalized ${timeBudget} cleaning plan based on EXACTLY what you see in the photo.
 
-Task: Analyze this room and create a ${timeBudget} cleaning plan as a JSON array.
+RULES:
+1. Describe specific visible items, their locations, and quantities (e.g., "3 coffee mugs on the left side of desk", "pile of clothes near the bed")
+2. Be concrete and actionable - mention colors, positions, and object types you can clearly see
+3. If you see clutter but can't identify specific items, describe the area (e.g., "mixed items on floor near window")
+4. Prioritize by clutter severity: high = blocking walkways or workspace, medium = visible mess, low = minor tidying
+5. Match the time budget:
+   - 15min: 2-3 quick high-impact tasks (15-20 minutes total)
+   - 1hr: 4-6 tasks covering main visible clutter (50-70 minutes total)
+   - weekend: 6-10 tasks including deep cleaning (120-180 minutes total)
 
-Guidelines:
-1. Identify visible room zones (e.g., "desk surface", "floor area", "bedside").
-2. Look for clutter categories (e.g., "papers/mail", "cables/electronics", "dishes/cups", "clothes").
-3. Create actionable tasks referencing these zones and categories.
-4. Only mention specific objects if they are clearly visible. Otherwise, use categories.
-5. Prioritize "decluttering" first, then "surfaces", then "floor".
+OUTPUT FORMAT: Return ONLY a valid JSON array. No markdown, no explanations, no extra text.
 
-Each task: {"id": "string", "title": "string", "description": "string", "estimatedMinutes": number, "priority": "high"|"medium"|"low", "area": "string"}
+Each task must have:
+- "id": sequential number as string
+- "title": specific action referencing what you see (e.g., "Put away the 3 water bottles on desk")
+- "description": detailed steps mentioning visible items/locations
+- "estimatedMinutes": realistic time estimate (5-25 minutes per task)
+- "priority": "high" (urgent/blocking), "medium" (visible mess), or "low" (finishing touches)
+- "area": room zone (e.g., "Desk", "Floor", "Bed area", "Shelves")
 
-Example output format:
-[{"id": "1", "title": "Clear papers from desk surface", "description": "Sort through mail and loose papers on the desk", "estimatedMinutes": 10, "priority": "high", "area": "Desk"}]`,
+Example:
+[{"id":"1","title":"Clear the papers and notebooks from left side of desk","description":"Gather the stack of loose papers, mail, and 2 notebooks. File important docs, recycle junk mail","estimatedMinutes":8,"priority":"high","area":"Desk"}]
+
+Now analyze the photo and return the JSON array:`,
         },
       }),
     });
