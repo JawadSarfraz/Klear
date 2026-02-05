@@ -22,7 +22,18 @@ export async function POST(request: NextRequest) {
     const { image, timeBudget } = await request.json();
 
     if (!image) {
+      console.error(`[PlanError] ID: ${requestId} | No image provided`);
       return NextResponse.json({ error: 'Image is required' }, { status: 400 });
+    }
+
+    // DEBUG: Log image details
+    const imageSize = image?.length || 0;
+    const imagePreview = image?.slice(0, 100) || 'empty';
+    console.log(`[PlanDebug] ID: ${requestId} | Image size: ${imageSize} chars | Preview: ${imagePreview}`);
+
+    if (imageSize < 100) {
+      console.error(`[PlanError] ID: ${requestId} | Image too small or invalid`);
+      return NextResponse.json({ error: 'Invalid image data' }, { status: 400 });
     }
 
     const apiKey = process.env.REPLICATE_API_TOKEN;
