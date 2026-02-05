@@ -1,4 +1,12 @@
-import { KLEAR_API_KEY_HEADER } from '@klear/shared';
+import { 
+  KLEAR_API_KEY_HEADER, 
+  KLEAR_DEVICE_ID_HEADER, 
+  CleaningTask, 
+  PredictionStatus,
+  InpaintResponse,
+  PlanResponse
+} from '@klear/shared';
+import { getDeviceId } from './storage';
 
 // API service for Klear mobile app
 
@@ -15,21 +23,13 @@ const getBaseUrl = () => {
 const API_BASE_URL = getBaseUrl();
 const KLEAR_API_KEY = process.env.EXPO_PUBLIC_KLEAR_API_KEY || '';
 
-console.log(`[API] Initialized with Base URL: ${API_BASE_URL}`);
-
-export interface InpaintResponse {
-  predictionId: string;
-}
-
-export interface PlanResponse {
-  predictionId: string;
-}
-
-export interface PredictionStatus {
-  status: 'starting' | 'processing' | 'succeeded' | 'failed';
-  output?: string | string[];
-  tasks?: any[]; // For plan generation
-  error?: string;
+async function getHeaders() {
+  const deviceId = await getDeviceId();
+  return {
+    'Content-Type': 'application/json',
+    [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
+    [KLEAR_DEVICE_ID_HEADER]: deviceId,
+  };
 }
 
 export async function startInpainting(
@@ -37,12 +37,10 @@ export async function startInpainting(
   maskBase64: string,
   options?: { strength?: number; guidance_scale?: number }
 ): Promise<InpaintResponse> {
+  const headers = await getHeaders();
   const response = await fetch(`${API_BASE_URL}/api/inpaint`, {
     method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
-    },
+    headers,
     body: JSON.stringify({
       image: imageBase64,
       mask: maskBase64,
@@ -66,12 +64,10 @@ export async function generatePlan(
   imageBase64: string,
   timeBudget: string
 ): Promise<PlanResponse> {
+  const headers = await getHeaders();
   const response = await fetch(`${API_BASE_URL}/api/plan`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
-    },
+    headers,
     body: JSON.stringify({
       image: imageBase64,
       timeBudget,
@@ -90,10 +86,9 @@ export async function generatePlan(
 }
 
 export async function getPredictionStatus(predictionId: string): Promise<PredictionStatus> {
+  const headers = await getHeaders();
   const response = await fetch(`${API_BASE_URL}/api/inpaint/status?id=${predictionId}`, {
-    headers: {
-      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
-    }
+    headers,
   });
 
   if (!response.ok) {
@@ -103,11 +98,14 @@ export async function getPredictionStatus(predictionId: string): Promise<Predict
   return response.json();
 }
 
-export async function getPlanStatus(predictionId: string): Promise<PredictionStatus> {
-  const response = await fetch(`${API_BASE_URL}/api/plan/status?id=${predictionId}`, {
-    headers: {
-      [KLEAR_API_KEY_HEADER]: KLEAR_API_KEY,
-    }
+export async function getPlanStatus(predictionId: string, budget?: string): Promise<PredictionStatus> {
+  const url = new URL(`${API_BASE_URL}/api/plan/status`);
+  url.searchParams.append('id', predictionId);
+  if (budget) url.searchParams.append('budget', budget);
+
+  const headers = await getHeaders();
+  const response = await fetch(url.toString(), {
+    headers,
   });
 
   if (!response.ok) {
@@ -149,6 +147,7 @@ export async function pollForCompletion(
 
 export async function pollForPlan(
   predictionId: string,
+  timeBudget: string,
   onProgress?: (status: string) => void,
   maxAttempts = 60,
   intervalMs = 2000
@@ -156,7 +155,7 @@ export async function pollForPlan(
   let attempts = 0;
 
   while (attempts < maxAttempts) {
-    const status = await getPlanStatus(predictionId);
+    const status = await getPlanStatus(predictionId, timeBudget);
     
     onProgress?.(status.status);
 
