@@ -426,9 +426,9 @@ function AppContent() {
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.title}>See your space, transformed</Text>
+          <Text style={styles.title}>Get a cleaning plan in 30 seconds</Text>
           <Text style={styles.subtitle}>
-            Take a photo of your messy room and get a personalized cleaning plan
+            Take a photo → we generate step-by-step tasks
           </Text>
 
           <View style={styles.buttonContainer}>
