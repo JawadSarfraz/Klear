@@ -55,11 +55,11 @@ export async function POST(request: NextRequest) {
         create: {
           width: imageMeta.width,
           height: imageMeta.height,
-          channels: 3, // RGB
-          background: { r: 255, g: 255, b: 255 } // White
+          channels: 3,
+          background: { r: 255, g: 255, b: 255 }
         }
       })
-      .grayscale() // Convert to grayscale
+      .png() // CRITICAL: Convert raw buffer to valid PNG format
       .toBuffer();
     } else {
       // User provided mask: Resize & Dilate
