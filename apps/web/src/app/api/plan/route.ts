@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { image, timeBudget } = await request.json();
+    const { image, timeBudget, roomType } = await request.json();
 
     if (!image) {
       console.error(`[PlanError] ID: ${requestId} | No image provided`);
@@ -42,7 +42,10 @@ export async function POST(request: NextRequest) {
     }
 
     const deviceId = request.headers.get('x-device-id') || 'unknown';
-    console.log(`[PlanRequest] ID: ${requestId} | Device: ${deviceId} | Budget: ${timeBudget}`);
+    console.log(`[PlanRequest] ID: ${requestId} | Device: ${deviceId} | Budget: ${timeBudget} | Room: ${roomType || 'unspecified'}`);
+
+    // Humanize room type for prompt
+    const roomLabel = roomType ? ` ${roomType.replace('_', ' ')}` : 'room';
 
     // Call Llama 3.2 Vision for room analysis and task generation
     const response = await fetch('https://api.replicate.com/v1/predictions', {
@@ -59,7 +62,7 @@ export async function POST(request: NextRequest) {
           image: image,
           max_tokens: 1024,
           temperature: 0.1,
-          prompt: `You are analyzing a photo of a messy room. Create a personalized ${timeBudget} cleaning plan based on EXACTLY what you see in the photo.
+          prompt: `You are analyzing a photo of a messy${roomLabel}. Create a personalized ${timeBudget} cleaning plan based on EXACTLY what you see in the photo.
 
 RULES:
 1. Describe specific visible items, their locations, and quantities (e.g., "3 coffee mugs on the left side of desk", "pile of clothes near the bed")

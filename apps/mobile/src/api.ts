@@ -61,7 +61,8 @@ export async function startInpainting(
 
 export async function generatePlan(
   imageBase64: string,
-  timeBudget: string
+  timeBudget: string,
+  roomType?: string
 ): Promise<PlanResponse> {
   const headers = await getHeaders();
   const response = await fetch(`${API_BASE_URL}/api/plan`, {
@@ -70,6 +71,7 @@ export async function generatePlan(
     body: JSON.stringify({
       image: imageBase64,
       timeBudget,
+      roomType, // V1: Pass room context to improve AI accuracy
     }),
   });
 

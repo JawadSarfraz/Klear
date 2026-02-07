@@ -23,9 +23,10 @@ import { saveSession, loadSession, saveTasks, clearSession } from './src/storage
 import { BrushMaskScreen } from './src/BrushMaskScreen';
 import { CleaningTask } from '@klear/shared';
 
-type AppStep = 'home' | 'preview' | 'mask' | 'timeBudget' | 'processing' | 'result' | 'tasks' | 'error';
+type AppStep = 'home' | 'preview' | 'mask' | 'context' | 'timeBudget' | 'processing' | 'result' | 'tasks' | 'error';
 type TimeBudget = '15min' | '1hr' | 'weekend';
 type ErrorType = 'vision_failed' | 'inpaint_failed' | 'network_timeout' | 'unknown';
+type RoomType = 'bedroom' | 'kitchen' | 'office' | 'living_room' | 'bathroom' | 'other';
 
 // Local interface removed in favor of shared type
 
@@ -65,6 +66,7 @@ function AppContent() {
   const [maskData, setMaskData] = useState<string | null>(null);
   const [cleanedImage, setCleanedImage] = useState<string | null>(null);
   const [timeBudget, setTimeBudget] = useState<TimeBudget>('1hr');
+  const [roomType, setRoomType] = useState<RoomType>('bedroom');
   const [processingStatus, setProcessingStatus] = useState<string>('Starting...');
   const [tasks, setTasks] = useState<CleaningTask[]>([]);
   const [sliderPosition, setSliderPosition] = useState(50);
@@ -194,8 +196,8 @@ function AppContent() {
 
   const handleContinueToTimeBudget = () => {
     triggerHaptic('light');
-    // V1: Skip mask drawing, go straight to time budget
-    setStep('timeBudget');
+    // V1: Go to context questions first
+    setStep('context');
   };
 
   const handleMaskComplete = (mask: string) => {
@@ -272,7 +274,7 @@ function AppContent() {
         console.log('[DEBUG] Sending image to AI, size:', selectedImageBase64?.length || 0, 'chars');
         console.log('[DEBUG] Image preview:', selectedImageBase64?.slice(0, 100));
         
-        const { predictionId } = await generatePlan(selectedImageBase64, timeBudget);
+        const { predictionId } = await generatePlan(selectedImageBase64, timeBudget, roomType);
         
         const realTasks = await pollForPlan(predictionId, timeBudget, (status) => {
           if (status === 'processing') {
@@ -504,13 +506,72 @@ function AppContent() {
     );
   }
 
+  // ============ CONTEXT QUESTIONS SCREEN ============
+  if (step === 'context') {
+    const roomOptions: { key: RoomType; label: string; icon: string }[] = [
+      { key: 'bedroom', label: 'Bedroom', icon: '🛏️' },
+      { key: 'kitchen', label: 'Kitchen', icon: '🍳' },
+      { key: 'office', label: 'Office/Study', icon: '💻' },
+      { key: 'living_room', label: 'Living Room', icon: '🛋️' },
+      { key: 'bathroom', label: 'Bathroom', icon: '🚿' },
+      { key: 'other', label: 'Other', icon: '🏠' },
+    ];
+
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => { triggerHaptic('light'); setStep('preview'); }}>
+            <Text style={styles.backButton}>← Back</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.timeBudgetContainer} contentContainerStyle={styles.timeBudgetContent}>
+          <Text style={styles.timeBudgetTitle}>Which room is this?</Text>
+          <Text style={styles.timeBudgetSubtitle}>Helps us identify items more accurately</Text>
+
+          <View style={styles.timeBudgetOptions}>
+            {roomOptions.map((option) => (
+              <TouchableOpacity
+                key={option.key}
+                style={[
+                  styles.timeBudgetOption,
+                  roomType === option.key && styles.timeBudgetOptionSelected
+                ]}
+                onPress={() => { triggerHaptic('light'); setRoomType(option.key); }}
+              >
+                <Text style={styles.timeBudgetIcon}>{option.icon}</Text>
+                <Text style={[
+                  styles.timeBudgetLabel,
+                  roomType === option.key && styles.timeBudgetLabelSelected
+                ]}>{option.label}</Text>
+                {roomType === option.key && (
+                  <View style={styles.checkmark}>
+                    <Text style={styles.checkmarkText}>✓</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity 
+            style={styles.primaryButton} 
+            onPress={() => { triggerHaptic('medium'); setStep('timeBudget'); }}
+          >
+            <Text style={styles.primaryButtonText}>Continue</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   // ============ TIME BUDGET SCREEN ============
   if (step === 'timeBudget') {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => { triggerHaptic('light'); setStep('preview'); }}>
+          <TouchableOpacity onPress={() => { triggerHaptic('light'); setStep('context'); }}>
             <Text style={styles.backButton}>← Back</Text>
           </TouchableOpacity>
         </View>
