@@ -202,8 +202,8 @@ function AppContent() {
   };
 
   const handleStartProcessing = async () => {
-    if (!selectedImageBase64 || !maskData) {
-      Alert.alert('Error', 'No image or mask data available');
+    if (!selectedImageBase64) {
+      Alert.alert('Error', 'No image available');
       return;
     }
 
@@ -213,7 +213,8 @@ function AppContent() {
     setError(null);
 
     try {
-      const { predictionId } = await startInpainting(selectedImageBase64, maskData, {
+      // V1: Server auto-generates mask, no mask drawing needed
+      const { predictionId } = await startInpainting(selectedImageBase64, {
         strength,
         guidance_scale: guidanceScale,
       });

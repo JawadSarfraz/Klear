@@ -33,8 +33,7 @@ async function getHeaders() {
 }
 
 export async function startInpainting(
-  imageBase64: string, 
-  maskBase64: string,
+  imageBase64: string,
   options?: { strength?: number; guidance_scale?: number }
 ): Promise<InpaintResponse> {
   const headers = await getHeaders();
@@ -43,7 +42,7 @@ export async function startInpainting(
     headers,
     body: JSON.stringify({
       image: imageBase64,
-      mask: maskBase64,
+      // V1: mask is optional, server will auto-generate if not provided
       strength: options?.strength,
       guidance_scale: options?.guidance_scale,
     }),
