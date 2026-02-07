@@ -192,7 +192,8 @@ function AppContent() {
 
   const handleContinueToTimeBudget = () => {
     triggerHaptic('light');
-    setStep('mask');
+    // V1: Skip mask drawing, go straight to time budget
+    setStep('timeBudget');
   };
 
   const handleMaskComplete = (mask: string) => {
@@ -496,7 +497,7 @@ function AppContent() {
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => { triggerHaptic('light'); setStep('mask'); }}>
+          <TouchableOpacity onPress={() => { triggerHaptic('light'); setStep('preview'); }}>
             <Text style={styles.backButton}>← Back</Text>
           </TouchableOpacity>
         </View>
