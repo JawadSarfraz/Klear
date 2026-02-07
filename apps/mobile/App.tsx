@@ -298,6 +298,9 @@ function AppContent() {
         }
         
         setStep('tasks');
+        // V1: Auto-start Focus Mode for better engagement
+        setIsFocusMode(true);
+        setCurrentTaskIndex(0);
         triggerHaptic('success');
       } catch (err) {
         console.error('[PlanError]:', err);
