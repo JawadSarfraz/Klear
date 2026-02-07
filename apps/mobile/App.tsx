@@ -23,8 +23,9 @@ import { saveSession, loadSession, saveTasks, clearSession } from './src/storage
 import { BrushMaskScreen } from './src/BrushMaskScreen';
 import { CleaningTask } from '@klear/shared';
 
-type AppStep = 'home' | 'preview' | 'mask' | 'timeBudget' | 'processing' | 'result' | 'tasks';
+type AppStep = 'home' | 'preview' | 'mask' | 'timeBudget' | 'processing' | 'result' | 'tasks' | 'error';
 type TimeBudget = '15min' | '1hr' | 'weekend';
+type ErrorType = 'vision_failed' | 'inpaint_failed' | 'network_timeout' | 'unknown';
 
 // Local interface removed in favor of shared type
 
@@ -68,6 +69,7 @@ function AppContent() {
   const [tasks, setTasks] = useState<CleaningTask[]>([]);
   const [sliderPosition, setSliderPosition] = useState(50);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<ErrorType>('unknown');
   const [isRetrying, setIsRetrying] = useState(false);
   const [strength, setStrength] = useState(0.85);
   const [guidanceScale, setGuidanceScale] = useState(7.5);
@@ -232,9 +234,20 @@ function AppContent() {
       setStep('result');
       triggerHaptic('success');
     } catch (err) {
+      console.error('[InpaintError]:', err);
       const errorMessage = err instanceof Error ? err.message : 'Processing failed';
+      
+      // Classify error type
+      let type: ErrorType = 'unknown';
+      if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+        type = 'network_timeout';
+      } else if (errorMessage.includes('failed') || errorMessage.includes('error')) {
+        type = 'inpaint_failed';
+      }
+      
       setError(errorMessage);
-      setStep('preview');
+      setErrorType(type);
+      setStep('error');
       triggerHaptic('error');
     }
   };
@@ -285,21 +298,21 @@ function AppContent() {
         setStep('tasks');
         triggerHaptic('success');
       } catch (err) {
-        console.error('Plan generation failed:', err);
+        console.error('[PlanError]:', err);
         const errorMessage = err instanceof Error ? err.message : 'Failed to create plan';
+        
+        // Classify error type
+        let type: ErrorType = 'unknown';
+        if (errorMessage.includes('timeout') || errorMessage.includes('timed out')) {
+          type = 'network_timeout';
+        } else if (errorMessage.includes('No plan') || errorMessage.includes('Analysis failed')) {
+          type = 'vision_failed';
+        }
+        
         setError(errorMessage);
-        setStep('result');
+        setErrorType(type);
+        setStep('error');
         triggerHaptic('error');
-        Alert.alert('Analysis Note', `Could not generate a personalized plan: ${errorMessage}. Using default tasks instead.`, [
-          { 
-            text: 'Proceed with Defaults', 
-            onPress: () => {
-              const maxTasks = TIME_BUDGETS[timeBudget].maxTasks;
-              setTasks(SAMPLE_TASKS.slice(0, maxTasks).map(t => ({ ...t, completed: false })));
-              setStep('tasks');
-            } 
-          }
-        ]);
       }
   };
 
@@ -795,6 +808,88 @@ function AppContent() {
             </TouchableOpacity>
           </ScrollView>
         )}
+      </SafeAreaView>
+    );
+  }
+
+  // ============ ERROR SCREEN ============
+  if (step === 'error') {
+    const getErrorContent = () => {
+      switch (errorType) {
+        case 'vision_failed':
+          return {
+            title: "Couldn't analyze this photo",
+            message: "The lighting or angle made it hard to identify items.",
+            suggestions: [
+              { label: '📷 Take New Photo', action: () => { setStep('home'); takePhoto(); } },
+              { label: '🖼️ Choose Different Photo', action: () => { setStep('home'); pickImage(); } },
+              { label: '📋 Use Sample Plan', action: () => {
+                const maxTasks = TIME_BUDGETS[timeBudget].maxTasks;
+                setTasks(SAMPLE_TASKS.slice(0, maxTasks).map(t => ({ ...t, completed: false })));
+                setStep('tasks');
+              }},
+            ],
+          };
+        case 'inpaint_failed':
+          return {
+            title: "Visualization unavailable",
+            message: "We created your cleaning plan, but the preview image didn't generate.",
+            suggestions: [
+              { label: '📋 Skip to Plan', action: () => handleViewTasks() },
+              { label: '🔄 Retry Generation', action: () => handleRetry() },
+            ],
+          };
+        case 'network_timeout':
+          return {
+            title: "Taking longer than usual",
+            message: "Our AI is busy. This happens during peak hours.",
+            suggestions: [
+              { label: '⏳ Keep Waiting', action: () => handleRetry() },
+              { label: '❌ Cancel', action: () => setStep('preview') },
+            ],
+          };
+        default:
+          return {
+            title: "Something went wrong",
+            message: error || "An unexpected error occurred.",
+            suggestions: [
+              { label: '🔄 Try Again', action: () => handleRetry() },
+              { label: '← Go Back', action: () => setStep('preview') },
+            ],
+          };
+      }
+    };
+
+    const errorContent = getErrorContent();
+
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar style="dark" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setStep('preview')}>
+            <Text style={styles.backButton}>← Back</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.content}>
+          <Text style={{ fontSize: 64, marginBottom: 24 }}>⚠️</Text>
+          <Text style={styles.title}>{errorContent.title}</Text>
+          <Text style={styles.subtitle}>{errorContent.message}</Text>
+
+          <View style={styles.buttonContainer}>
+            {errorContent.suggestions.map((suggestion, index) => (
+              <TouchableOpacity 
+                key={index}
+                style={index === 0 ? styles.primaryButton : styles.secondaryButton} 
+                onPress={suggestion.action}
+              >
+                <Text style={index === 0 ? styles.primaryButtonText : styles.secondaryButtonText}>
+                  {suggestion.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
