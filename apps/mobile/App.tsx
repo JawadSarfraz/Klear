@@ -608,58 +608,9 @@ function AppContent() {
             ))}
           </View>
 
-          <TouchableOpacity style={styles.primaryButton} onPress={handleStartProcessing}>
-            <Text style={styles.primaryButtonText}>Generate Clean View ✨</Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleViewTasks}>
+            <Text style={styles.primaryButtonText}>Create Cleaning Plan</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.advancedToggle} 
-            onPress={() => { triggerHaptic('light'); setShowAdvanced(!showAdvanced); }}
-          >
-            <Text style={styles.advancedToggleText}>
-              {showAdvanced ? '🔼 Hide Advanced Options' : '🔽 Show Advanced Options'}
-            </Text>
-          </TouchableOpacity>
-
-          {showAdvanced && (
-            <View style={styles.advancedContainer}>
-              <View style={styles.sliderGroup}>
-                <View style={styles.sliderHeader}>
-                  <Text style={styles.sliderLabel}>Strength (Creativity)</Text>
-                  <Text style={styles.sliderValue}>{strength.toFixed(2)}</Text>
-                </View>
-                <Text style={styles.sliderDesc}>Higher = more creative, Lower = closer to original</Text>
-                <Slider
-                  style={styles.slider}
-                  minimumValue={0}
-                  maximumValue={1}
-                  value={strength}
-                  onValueChange={setStrength}
-                  minimumTrackTintColor="#3b82f6"
-                  maximumTrackTintColor="#d1d5db"
-                  thumbTintColor="#3b82f6"
-                />
-              </View>
-
-              <View style={styles.sliderGroup}>
-                <View style={styles.sliderHeader}>
-                  <Text style={styles.sliderLabel}>Guidance (Precision)</Text>
-                  <Text style={styles.sliderValue}>{guidanceScale.toFixed(1)}</Text>
-                </View>
-                <Text style={styles.sliderDesc}>Higher = follows prompt strictly</Text>
-                <Slider
-                  style={styles.slider}
-                  minimumValue={1}
-                  maximumValue={20}
-                  value={guidanceScale}
-                  onValueChange={setGuidanceScale}
-                  minimumTrackTintColor="#3b82f6"
-                  maximumTrackTintColor="#d1d5db"
-                  thumbTintColor="#3b82f6"
-                />
-              </View>
-            </View>
-          )}
         </ScrollView>
       </SafeAreaView>
     );
@@ -758,8 +709,8 @@ function AppContent() {
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => { triggerHaptic('light'); setStep('result'); }}>
-            <Text style={styles.backButton}>← Back</Text>
+          <TouchableOpacity onPress={handleReset}>
+            <Text style={styles.backButton}>← Start Over</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Your Plan</Text>
           <TouchableOpacity onPress={toggleFocusMode}>
